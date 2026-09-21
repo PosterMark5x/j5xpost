@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Membersihkan disk space agar cukup ruang untuk build & chroot
+      # 1. Membersihkan disk space
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -23,26 +23,30 @@ jobs:
           echo "=== Status Disk Space ==="
           df -h
 
-      # 2. Menginstal paket dependensi & mengatur binfmt untuk emulator ARM
+      # 2. Menginstal paket dependensi & QEMU
       - name: Install Dependencies & Setup QEMU
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip git xz-utils aria2 curl tmux binfmt-support qemu-user-static
+          sudo apt-get install -y python3 git xz-utils aria2 curl tmux binfmt-support qemu-user-static
           sudo update-binfmts --enable
 
-      # 3. Menginstal pmbootstrap
-      - name: Install pmbootstrap
+      # 3. Menginstal pmbootstrap langsung dari Git
+      - name: Install pmbootstrap (from Git)
         run: |
-          pip install --break-system-packages pmbootstrap
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git --depth 1
+          cd pmbootstrap
+          mkdir -p ~/.local/bin
+          ln -s "$PWD/pmbootstrap.py" ~/.local/bin/pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+          ~/.local/bin/pmbootstrap --version
 
-      # 4. Konfigurasi Git Identity (Dibutuhkan oleh pmbootstrap / pmaports)
+      # 4. Konfigurasi Git Identity
       - name: Configure Git Identity
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
 
-      # 5. Inisialisasi awal pmaports (agar repositori paket siap di-custom)
+      # 5. Inisialisasi awal pmaports
       - name: Fetch pmaports
         run: |
           $HOME/.local/bin/pmbootstrap init-pmaports
@@ -51,10 +55,10 @@ jobs:
       - name: Start Interactive SSH Session (Upterm)
         uses: lhotari/action-upterm@v1
         with:
-          limit-access-to-actor: true # Hanya akun GitHub Anda yang bisa SSH
-          wait-timeout-minutes: 15     # Menunggu koneksi SSH hingga 15 menit
+          limit-access-to-actor: true
+          wait-timeout-minutes: 15
 
-      # 7. Meng-export file hasil build (dijalankan setelah Anda menutup sesi SSH)
+      # 7. Meng-export file hasil build
       - name: Export Build Artifacts
         if: always()
         run: |
@@ -66,7 +70,7 @@ jobs:
             sudo cp -r /tmp/postmarketOS-export/* ./output/ || true
           fi
 
-      # 8. Mengunggah hasil (.img / .zip / APK) ke GitHub Release Artifacts
+      # 8. Mengunggah hasil build ke GitHub Artifacts
       - name: Upload Build Artifacts
         if: always()
         uses: actions/upload-artifact@v4
