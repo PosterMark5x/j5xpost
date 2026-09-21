@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Membersihkan disk space
+      # 1. Membersihkan disk space agar cukup ruang untuk build & chroot
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -40,25 +40,20 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           ~/.local/bin/pmbootstrap --version
 
-      # 4. Konfigurasi Git Identity
+      # 4. Konfigurasi Git Identity (Dibutuhkan oleh pmbootstrap)
       - name: Configure Git Identity
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
 
-      # 5. Inisialisasi awal pmaports
-      - name: Fetch pmaports
-        run: |
-          $HOME/.local/bin/pmbootstrap init-pmaports
-
-      # 6. Memulai sesi SSH Interaktif (Upterm)
+      # 5. Memulai sesi SSH Interaktif (Upterm)
       - name: Start Interactive SSH Session (Upterm)
         uses: lhotari/action-upterm@v1
         with:
-          limit-access-to-actor: true
-          wait-timeout-minutes: 15
+          limit-access-to-actor: true # Hanya akun GitHub Anda yang bisa SSH
+          wait-timeout-minutes: 15     # Menunggu koneksi SSH hingga 15 menit
 
-      # 7. Meng-export file hasil build
+      # 6. Meng-export file hasil build (dijalankan setelah Anda menutup sesi SSH)
       - name: Export Build Artifacts
         if: always()
         run: |
@@ -70,7 +65,7 @@ jobs:
             sudo cp -r /tmp/postmarketOS-export/* ./output/ || true
           fi
 
-      # 8. Mengunggah hasil build ke GitHub Artifacts
+      # 7. Mengunggah hasil build ke GitHub Artifacts
       - name: Upload Build Artifacts
         if: always()
         uses: actions/upload-artifact@v4
